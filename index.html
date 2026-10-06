@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1020">
+    <meta name="description" content="Comparte y previsualiza tu pantalla de forma sencilla.">
+    <title>Compartir pantalla | Mi espacio</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="page">
+        <header class="topbar">
+            <a class="brand" href="#" aria-label="Mi espacio, inicio">
+                <span class="brand-mark" aria-hidden="true">M</span>
+                <span>mi espacio</span>
+            </a>
+            <span class="secure-label"><span aria-hidden="true"></span> Sesión privada</span>
+        </header>
+
+        <section class="hero" aria-labelledby="page-title">
+            <p class="eyebrow">COMPARTE CON FACILIDAD</p>
+            <h1 id="page-title">Tu pantalla,<br><span>cuando la necesites.</span></h1>
+            <p class="intro">Inicia una vista previa de tu pantalla en segundos. Tú decides qué ventana compartir y puedes detenerla cuando quieras.</p>
+        </section>
+
+        <section class="share-card" aria-label="Vista previa de pantalla">
+            <div class="card-heading">
+                <div>
+                    <h2>Vista previa</h2>
+                    <p id="status" role="status" aria-live="polite">Tu pantalla aún no se está compartiendo.</p>
+                </div>
+                <span class="status-indicator" id="status-indicator" aria-hidden="true"></span>
+            </div>
+
+            <div class="preview" id="preview">
+                <video id="screen-preview" autoplay muted playsinline aria-label="Vista previa de tu pantalla compartida"></video>
+                <div class="preview-placeholder" id="preview-placeholder">
+                    <span class="screen-icon" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <rect x="5" y="7" width="38" height="27" rx="4" stroke="currentColor" stroke-width="2.5"/>
+                            <path d="M17 41h14M24 34v7m-8-19 6-6 5 5 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <strong>Tu espacio está listo</strong>
+                    <span>La vista previa aparecerá aquí</span>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <p class="hint"><span aria-hidden="true">ⓘ</span> Tu navegador te preguntará qué quieres compartir.</p>
+                <button id="share-button" type="button">
+                    <svg class="button-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" stroke="currentColor" stroke-width="1.7"/>
+                        <path d="M6 16.5h4m-2-4v4m7-7 2-1.5v7L15 13.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Compartir pantalla</span>
+                </button>
+            </div>
+            <p class="error-message" id="error-message" role="alert" hidden></p>
+        </section>
+
+        <footer class="page-footer">
+            <p>La captura solo comienza cuando tú lo autorizas.</p>
+        </footer>
+    </main>
+
+    <script>
+        const shareButton = document.querySelector("#share-button");
+        const preview = document.querySelector("#screen-preview");
+        const placeholder = document.querySelector("#preview-placeholder");
+        const status = document.querySelector("#status");
+        const statusIndicator = document.querySelector("#status-indicator");
+        const errorMessage = document.querySelector("#error-message");
+        let screenStream = null;
+
+        function stopSharing() {
+            if (screenStream) {
+                screenStream.getTracks().forEach((track) => track.stop());
+                screenStream = null;
+            }
+
+            preview.srcObject = null;
+            preview.classList.remove("is-visible");
+            placeholder.hidden = false;
+            status.textContent = "Tu pantalla aún no se está compartiendo.";
+            statusIndicator.classList.remove("is-active");
+            shareButton.querySelector("span").textContent = "Compartir pantalla";
+            shareButton.classList.remove("is-sharing");
+        }
+
+        shareButton.addEventListener("click", async () => {
+            errorMessage.hidden = true;
+            errorMessage.textContent = "";
+
+            if (screenStream) {
+                stopSharing();
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                errorMessage.textContent = "Tu navegador no permite compartir pantalla. Prueba con una versión reciente de Chrome, Edge o Firefox.";
+                errorMessage.hidden = false;
+                return;
+            }
+
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+
+                preview.srcObject = screenStream;
+                preview.classList.add("is-visible");
+                placeholder.hidden = true;
+                status.textContent = "Compartiendo pantalla en este momento.";
+                statusIndicator.classList.add("is-active");
+                shareButton.querySelector("span").textContent = "Detener captura";
+                shareButton.classList.add("is-sharing");
+                screenStream.getVideoTracks()[0].addEventListener("ended", stopSharing, { once: true });
+            } catch (error) {
+                if (error.name === "NotAllowedError") {
+                    errorMessage.textContent = "No se inició la captura. Puedes volver a intentarlo cuando quieras.";
+                } else {
+                    errorMessage.textContent = "No se pudo compartir la pantalla. Comprueba los permisos e inténtalo de nuevo.";
+                }
+                errorMessage.hidden = false;
+            }
+        });
+    </script>
+</body>
+</html>
